@@ -23,8 +23,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install --upgrade pip
-          pip install pytest scikit-learn pandas pyyaml joblib mlflow
+          python -m pip install --upgrade pip
+          python -m pip install pytest scikit-learn pandas pyyaml joblib mlflow requests
 
       - name: Run unit tests
         run: pytest -v tests/
@@ -50,8 +50,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install --upgrade pip
-          pip install scikit-learn pandas pyyaml joblib mlflow fastapi uvicorn pydantic requests
+          python -m pip install --upgrade pip
+          python -m pip install pandas requests scikit-learn pyyaml joblib mlflow fastapi uvicorn pydantic
 
       - name: Prepare or Pull Data
         env:
@@ -61,6 +61,7 @@ jobs:
             echo "Authenticating to Cloud Storage..."
             echo "$STORAGE_CREDENTIALS" > /tmp/sa-key.json
             export GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa-key.json
+            python -m pip install dvc dvc-gs
             dvc pull data/train_batch1.csv.dvc data/holdout.csv.dvc || python prepare_data.py
           else
             echo "Running local data preparation fallback..."
@@ -157,7 +158,7 @@ jobs:
             ssh -o StrictHostKeyChecking=no "$SERVER_USER@$SERVER_HOST" "sudo systemctl restart income-api && sleep 5 && curl -sf http://localhost:8080/healthz"
           else
             echo "Validating inference serving API locally on runner..."
-            pip install fastapi uvicorn scikit-learn joblib pydantic requests
+            python -m pip install fastapi uvicorn scikit-learn joblib pydantic requests pandas
             python prepare_data.py
             python src/train.py
             python -m uvicorn src.serve:app --host 0.0.0.0 --port 8080 &
