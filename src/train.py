@@ -1,12 +1,17 @@
-import mlflow
-import mlflow.sklearn
-import pandas as pd
-import yaml
-import json
-import joblib
 import os
+import json
+import yaml
+import joblib
+import pandas as pd
+from contextlib import nullcontext
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.metrics import accuracy_score, f1_score
+
+try:
+    import mlflow
+    import mlflow.sklearn
+except ImportError:
+    mlflow = None
 
 # Nguong chat luong cua lab nay la f1_score, KHONG phai accuracy.
 # Ly do: bo du lieu Adult co ty le lop 75/25. Mot mo hinh doan bua
@@ -40,12 +45,17 @@ def train(
     X_eval = df_eval.drop(columns=["target"])
     y_eval = df_eval["target"]
 
-    if not os.environ.get("MLFLOW_TRACKING_URI"):
-        mlflow.set_tracking_uri("sqlite:///mlflow.db")
+    if mlflow is not None:
+        if not os.environ.get("MLFLOW_TRACKING_URI"):
+            mlflow.set_tracking_uri("sqlite:///mlflow.db")
+        run_context = mlflow.start_run()
+    else:
+        run_context = nullcontext()
 
-    with mlflow.start_run():
+    with run_context:
         # 3: Ghi nhan cac sieu tham so
-        mlflow.log_params(params)
+        if mlflow is not None:
+            mlflow.log_params(params)
 
         # 4: Khoi tao va huan luyen GradientBoostingClassifier
         model = GradientBoostingClassifier(**params, random_state=42)
@@ -57,9 +67,13 @@ def train(
         acc = float(accuracy_score(y_eval, preds))
 
         # 6: Ghi nhan chi so vao MLflow
-        mlflow.log_metric("f1_score", f1)
-        mlflow.log_metric("accuracy", acc)
-        mlflow.sklearn.log_model(model, "model")
+        if mlflow is not None:
+            mlflow.log_metric("f1_score", f1)
+            mlflow.log_metric("accuracy", acc)
+            try:
+                mlflow.sklearn.log_model(model, "model")
+            except Exception as e:
+                print(f"Notice: mlflow log_model skipped: {e}")
 
         # 7: In ket qua ra man hinh
         print(f"F1: {f1:.4f} | Accuracy: {acc:.4f}")
