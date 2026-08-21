@@ -3,11 +3,6 @@ name: Income Model CI/CD
 on:
   push:
     branches: [main]
-    paths:
-      - 'data/**.dvc'
-      - 'src/**.py'
-      - 'params.yaml'
-      - '.github/workflows/cicd.yml'
   workflow_dispatch:
 
 jobs:
@@ -56,7 +51,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip
-          pip install -r requirements.txt || pip install scikit-learn pandas pyyaml joblib mlflow fastapi uvicorn pydantic requests
+          pip install scikit-learn pandas pyyaml joblib mlflow fastapi uvicorn pydantic requests
 
       - name: Prepare or Pull Data
         env:
@@ -156,13 +151,12 @@ jobs:
         run: |
           if [ -n "$SERVER_HOST" ] && [ -n "$SERVER_SSH_KEY" ]; then
             echo "Deploying via SSH to $SERVER_HOST..."
-            # SSH execution
             mkdir -p ~/.ssh
             echo "$SERVER_SSH_KEY" > ~/.ssh/id_rsa
             chmod 600 ~/.ssh/id_rsa
             ssh -o StrictHostKeyChecking=no "$SERVER_USER@$SERVER_HOST" "sudo systemctl restart income-api && sleep 5 && curl -sf http://localhost:8080/healthz"
           else
-            echo "Validating inference serving API locally..."
+            echo "Validating inference serving API locally on runner..."
             pip install fastapi uvicorn scikit-learn joblib pydantic requests
             python prepare_data.py
             python src/train.py
@@ -170,7 +164,6 @@ jobs:
             SERVER_PID=$!
             sleep 5
             curl -sf http://localhost:8080/healthz && echo "Health check passed."
-            # Test inference score endpoint
             curl -s -X POST http://localhost:8080/score -H "Content-Type: application/json" -d '{"features": [39, 5, 13, 2, 3, 0, 1, 2174, 0, 40]}'
             kill $SERVER_PID || true
           fi
