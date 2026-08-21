@@ -45,17 +45,23 @@ def train(
     X_eval = df_eval.drop(columns=["target"])
     y_eval = df_eval["target"]
 
+    run_context = nullcontext()
     if mlflow is not None:
-        if not os.environ.get("MLFLOW_TRACKING_URI"):
-            mlflow.set_tracking_uri("sqlite:///mlflow.db")
-        run_context = mlflow.start_run()
-    else:
-        run_context = nullcontext()
+        try:
+            if not os.environ.get("MLFLOW_TRACKING_URI"):
+                mlflow.set_tracking_uri("sqlite:///mlflow.db")
+            run_context = mlflow.start_run()
+        except Exception as e:
+            print(f"Notice: MLflow start_run fallback: {e}")
+            run_context = nullcontext()
 
     with run_context:
         # 3: Ghi nhan cac sieu tham so
-        if mlflow is not None:
-            mlflow.log_params(params)
+        try:
+            if mlflow is not None and mlflow.active_run():
+                mlflow.log_params(params)
+        except Exception:
+            pass
 
         # 4: Khoi tao va huan luyen GradientBoostingClassifier
         model = GradientBoostingClassifier(**params, random_state=42)
@@ -67,13 +73,13 @@ def train(
         acc = float(accuracy_score(y_eval, preds))
 
         # 6: Ghi nhan chi so vao MLflow
-        if mlflow is not None:
-            mlflow.log_metric("f1_score", f1)
-            mlflow.log_metric("accuracy", acc)
-            try:
+        try:
+            if mlflow is not None and mlflow.active_run():
+                mlflow.log_metric("f1_score", f1)
+                mlflow.log_metric("accuracy", acc)
                 mlflow.sklearn.log_model(model, "model")
-            except Exception as e:
-                print(f"Notice: mlflow log_model skipped: {e}")
+        except Exception as e:
+            print(f"Notice: mlflow logging skipped: {e}")
 
         # 7: In ket qua ra man hinh
         print(f"F1: {f1:.4f} | Accuracy: {acc:.4f}")

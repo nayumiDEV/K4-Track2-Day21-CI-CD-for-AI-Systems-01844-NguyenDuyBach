@@ -24,7 +24,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install pytest scikit-learn pandas pyyaml joblib mlflow-skinny requests
+          python -m pip install pytest scikit-learn pandas pyyaml joblib mlflow sqlalchemy requests
 
       - name: Run unit tests
         run: pytest -v tests/
@@ -51,7 +51,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install pandas requests scikit-learn pyyaml joblib mlflow-skinny fastapi uvicorn pydantic
+          python -m pip install pandas requests scikit-learn pyyaml joblib mlflow sqlalchemy fastapi uvicorn pydantic
 
       - name: Prepare or Pull Data
         env:
@@ -158,7 +158,7 @@ jobs:
             ssh -o StrictHostKeyChecking=no "$SERVER_USER@$SERVER_HOST" "sudo systemctl restart income-api && sleep 5 && curl -sf http://localhost:8080/healthz"
           else
             echo "Validating inference serving API locally on runner..."
-            python -m pip install fastapi uvicorn scikit-learn joblib pydantic requests pandas mlflow-skinny
+            python -m pip install fastapi uvicorn scikit-learn joblib pydantic requests pandas mlflow sqlalchemy
             python prepare_data.py
             python src/train.py
             python -m uvicorn src.serve:app --host 0.0.0.0 --port 8080 &
